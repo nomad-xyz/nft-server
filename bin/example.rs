@@ -46,5 +46,5 @@ impl MetadataGenerator for Generator {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    let _ = serve(Generator, ([0, 0, 0, 0], 8080)).await;
+    let _ = serve_generator(Generator, ([0, 0, 0, 0], 8080)).await;
 }

@@ -7,12 +7,28 @@ use serde::de::DeserializeOwned;
 
 use crate::{open_sea::ContractMetadata, MetadataGenerator, NftMetadata};
 
+/// A `MetadataGenerator` that consults stored JSON files in the local
+/// filesystem.
+///
+/// ## Notes
+///
+/// Files are stored at `contract.json` for contract-level metadata, and
+/// `{token-id}.json` for tokens, where `token-id` is the string representation
+/// of the decimal token id. e.g. `0.json`, `384510.json`, etc
+#[derive(Debug, Clone)]
 pub struct LocalJson {
     location: PathBuf,
 }
 
 impl LocalJson {
-    pub fn from_path(location: PathBuf) -> Result<Self> {
+    /// Instantiate a `LocalJson` metadata generator. Creates directories up to
+    /// the specified path
+    ///
+    /// # Errors
+    ///
+    /// - If the location exists and is not a directory
+    /// - If the directory can't be created
+    pub fn new(location: PathBuf) -> Result<Self> {
         eyre::ensure!(
             !location.exists() || location.is_dir(),
             "location exists and is not a directory"
@@ -21,6 +37,7 @@ impl LocalJson {
         Ok(Self { location })
     }
 
+    /// Load JSON from a specific file
     async fn load_json<T, S>(&self, file_name: S) -> Result<T>
     where
         T: DeserializeOwned,
