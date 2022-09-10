@@ -20,6 +20,17 @@ pub struct LocalJson {
     location: PathBuf,
 }
 
+/// `LocalJson` errors
+#[derive(thiserror::Error, Debug)]
+pub enum LocalJsonError {
+    /// Serde
+    #[error("{0}")]
+    Serde(#[from] serde_json::Error),
+    /// Filesystem
+    #[error("{0}")]
+    Filesystem(#[from] std::io::Error),
+}
+
 impl LocalJson {
     /// Instantiate a `LocalJson` metadata generator. Creates directories up to
     /// the specified path
@@ -38,24 +49,35 @@ impl LocalJson {
     }
 
     /// Load JSON from a specific file
-    async fn load_json<T, S>(&self, file_name: S) -> Result<T>
+    async fn load_json<T, S>(&self, file_name: S) -> Result<Option<T>, LocalJsonError>
     where
         T: DeserializeOwned,
         S: AsRef<str>,
     {
         let path = self.location.with_file_name(file_name.as_ref());
-        let raw = tokio::fs::read(path).await?;
-        Ok(serde_json::from_slice(&raw)?)
+        let raw = tokio::fs::read(path).await;
+        match raw {
+            Ok(raw) => Ok(serde_json::from_slice(&raw)?),
+            Err(e) => {
+                if e.kind() == tokio::io::ErrorKind::NotFound {
+                    Ok(None)
+                } else {
+                    Err(e.into())
+                }
+            }
+        }
     }
 }
 
 #[async_trait]
 impl MetadataGenerator for LocalJson {
-    async fn metadata_for(&self, token_id: U256) -> Option<NftMetadata> {
-        self.load_json(format!("{}.json", token_id)).await.ok()
+    type Error = LocalJsonError;
+
+    async fn metadata_for(&self, token_id: U256) -> Result<Option<NftMetadata>, Self::Error> {
+        self.load_json(format!("{}.json", token_id)).await
     }
 
     async fn contract_metadata(&self) -> Option<ContractMetadata> {
-        self.load_json("contract.json").await.ok()
+        self.load_json("contract.json").await.ok().flatten()
     }
 }

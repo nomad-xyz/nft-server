@@ -33,13 +33,13 @@ pub enum OpenSeaAttributeValue {
     /// An `Integer` with display type and max value
     Integer {
         /// The value
-        value: i128,
+        value: i64,
         /// The display type on OpenSea
         #[serde(default, skip_serializing_if = "Option::is_none")]
         display_type: Option<OpenSeaDisplayType>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         /// The maximum value for display on OpenSea
-        max_value: Option<i128>,
+        max_value: Option<i64>,
     },
     /// A `Float` with display type and max value
     Float {
@@ -104,7 +104,7 @@ impl OpenSeaAttribute {
     }
 
     /// Shortcut to instantiate an integer attribute
-    pub fn integer<S>(trait_type: Option<S>, value: i128, max_value: Option<i128>) -> Self
+    pub fn integer<S>(trait_type: Option<S>, value: i64, max_value: Option<i64>) -> Self
     where
         S: AsRef<str>,
     {

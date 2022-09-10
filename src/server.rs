@@ -20,12 +20,25 @@ where
     T: MetadataGenerator,
 {
     match generator.metadata_for(token_id).await {
-        Some(metadata) => (
+        Ok(Some(metadata)) => (
             [("Cache-Control", "max-age=300, must-revalidate")],
             Json(metadata),
         )
             .into_response(),
-        None => (StatusCode::NOT_FOUND, "unknown token id").into_response(),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            [("Cache-Control", "max-age=300, must-revalidate")],
+            "unknown token id",
+        )
+            .into_response(),
+        Err(e) => {
+            tracing::error!(error = %e, "error in metadata lookup");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "service temporarily unavailable",
+            )
+                .into_response()
+        }
     }
 }
 

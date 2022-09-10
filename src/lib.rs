@@ -106,17 +106,24 @@ pub struct NftMetadata {
 /// should make their own metadata generator
 #[async_trait]
 pub trait MetadataGenerator {
+    /// Associated Error type
+    type Error: std::error::Error + Send + Sync + 'static;
+
     /// Generate metadata for a specific token
-    async fn metadata_for(&self, token_id: U256) -> Option<NftMetadata>;
+    async fn metadata_for(&self, token_id: U256) -> Result<Option<NftMetadata>, Self::Error>;
 
     /// Generate contract-level metadata (in the OpenSea format). See
-    /// [`ContractMetadata`]
+    /// [`ContractMetadata`].
+    ///
+    /// This function returns an option, as contract metadata is not intended
+    /// to be dynamically generated
     async fn contract_metadata(&self) -> Option<ContractMetadata>;
 }
 
 #[cfg(test)]
 mod tests {
     use ethers::types::U256;
+    use serde_json::json;
 
     #[test]
     fn it_works() {
@@ -124,5 +131,6 @@ mod tests {
         dbg!(num);
         dbg!(num.to_string());
         dbg!(format!("{}", num));
+        dbg!(json!({"number": 5u64}));
     }
 }

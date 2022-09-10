@@ -1,3 +1,5 @@
+use std::convert::Infallible;
+
 use ethers::types::{Address, U256};
 use nft_server::prelude::*;
 
@@ -5,14 +7,16 @@ struct Generator;
 
 #[async_trait::async_trait]
 impl MetadataGenerator for Generator {
-    async fn metadata_for(&self, token_id: U256) -> Option<NftMetadata> {
+    type Error = Infallible;
+
+    async fn metadata_for(&self, token_id: U256) -> Result<Option<NftMetadata>, Infallible> {
         if token_id == U256::zero() {
             let image = NftImage::Url {
                 image: "https://peach.blender.org/wp-content/uploads/bbb-splash.thumbnail.png"
                     .parse()
                     .unwrap(),
             };
-            Some(NftMetadata {
+            Ok(Some(NftMetadata {
                 name: "no".to_owned(),
                 description: "hello".to_owned(),
                 external_url: "http://example.com/".parse().unwrap(),
@@ -21,9 +25,9 @@ impl MetadataGenerator for Generator {
                 background_color: None,
                 animation_url: None,
                 youtube_url: None,
-            })
+            }))
         } else {
-            None
+            Ok(None)
         }
     }
 
