@@ -25,9 +25,11 @@ use open_sea::{ContractMetadata, OpenSeaAttribute};
 
 /// Prelude
 pub mod prelude {
-    #[cfg(feature = "axum")]
-    pub use crate::server::{serve_generator, serve_router};
+    pub use crate::server::{
+        serve_generator, serve_generator_with_span, serve_router, serve_router_with_span,
+    };
     pub use crate::{open_sea::*, MetadataGenerator, NftImage, NftMetadata};
+    #[cfg(feature = "axum")]
     pub use ethers::types::U256;
     pub use url::Url;
 }

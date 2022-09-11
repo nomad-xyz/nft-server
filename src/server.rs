@@ -10,6 +10,7 @@ use axum::{
 };
 use ethers::types::U256;
 use tokio::task::JoinHandle;
+use tracing::{info_span, Instrument, Span};
 
 use crate::MetadataGenerator;
 
@@ -63,6 +64,29 @@ pub async fn return_404() -> impl IntoResponse {
     (StatusCode::NOT_FOUND, "unknown route")
 }
 
+/// Serve an NFT generator at the specified socket address, running in a
+/// provided span.
+///
+/// Adds routes for `/:token_id` and `/`, as well as a fallback 404. This is a
+/// simple, works-out-of-the-box JSON metadata server with no additional app or
+/// routing customization. If you would like to add additional routes, consider
+/// defining the axum `Router` and handlers separately, and passing your router
+/// to `serve_router`
+pub fn serve_generator_with_span<T>(
+    t: T,
+    socket: impl Into<SocketAddr>,
+    span: Span,
+) -> JoinHandle<()>
+where
+    T: MetadataGenerator + Send + Sync + 'static,
+{
+    let app = Router::<_, Body>::with_state(Arc::new(t))
+        .route("/:token_id", get(nft_handler))
+        .route("/", get(contract_handler))
+        .fallback(return_404);
+    serve_router_with_span(app, socket, span)
+}
+
 /// Serve an NFT generator at the specified socket address.
 ///
 /// Adds routes for `/:token_id` and `/`, as well as a fallback 404. This is a
@@ -74,11 +98,32 @@ pub fn serve_generator<T>(t: T, socket: impl Into<SocketAddr>) -> JoinHandle<()>
 where
     T: MetadataGenerator + Send + Sync + 'static,
 {
-    let app = Router::<_, Body>::with_state(Arc::new(t))
-        .route("/:token_id", get(nft_handler))
-        .route("/", get(contract_handler))
-        .fallback(return_404);
-    serve_router(app, socket)
+    let span = info_span!("serve_generator");
+    serve_generator_with_span(t, socket, span)
+}
+
+/// Serve an app with some shared state at the specified socket address
+/// instrumented with the provided span.
+///
+/// Intended to allow full customization of the router. If a simple
+/// no-customization JSON metadata server is required, instead use
+pub fn serve_router_with_span<T>(
+    app: Router<Arc<T>>,
+    socket: impl Into<SocketAddr>,
+    span: Span,
+) -> JoinHandle<()>
+where
+    T: MetadataGenerator + Send + Sync + 'static,
+{
+    let addr = socket.into();
+    tokio::spawn(async move {
+        Instrument::instrument(
+            axum::Server::bind(&addr).serve(app.into_make_service()),
+            span,
+        )
+        .await
+        .unwrap();
+    })
 }
 
 /// Serve an app with some shared state at the specified socket address.
@@ -89,11 +134,6 @@ pub fn serve_router<T>(app: Router<Arc<T>>, socket: impl Into<SocketAddr>) -> Jo
 where
     T: MetadataGenerator + Send + Sync + 'static,
 {
-    let addr = socket.into();
-    tokio::spawn(async move {
-        axum::Server::bind(&addr)
-            .serve(app.into_make_service())
-            .await
-            .unwrap();
-    })
+    let span = info_span!("serve_router");
+    serve_router_with_span(app, socket, span)
 }
