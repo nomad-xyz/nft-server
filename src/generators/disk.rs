@@ -1,9 +1,10 @@
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 
 use async_trait::async_trait;
 use ethers::types::U256;
 use eyre::Result;
 use serde::de::DeserializeOwned;
+use tokio::sync::RwLock;
 
 use crate::{open_sea::ContractMetadata, MetadataGenerator, NftMetadata};
 
@@ -15,9 +16,11 @@ use crate::{open_sea::ContractMetadata, MetadataGenerator, NftMetadata};
 /// Files are stored at `contract.json` for contract-level metadata, and
 /// `{token-id}.json` for tokens, where `token-id` is the string representation
 /// of the decimal token id. e.g. `0.json`, `384510.json`, etc
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct LocalJson {
     location: PathBuf,
+    cache: RwLock<HashMap<U256, NftMetadata>>,
+    contract_cache: RwLock<Option<ContractMetadata>>,
 }
 
 /// `LocalJson` errors
@@ -45,7 +48,11 @@ impl LocalJson {
             "location exists and is not a directory"
         );
         std::fs::create_dir_all(&location)?;
-        Ok(Self { location })
+        Ok(Self {
+            location,
+            cache: Default::default(),
+            contract_cache: Default::default(),
+        })
     }
 
     /// Load JSON from a specific file
@@ -67,6 +74,32 @@ impl LocalJson {
             }
         }
     }
+
+    async fn load_metadata(&self, token_id: U256) -> Result<Option<NftMetadata>, LocalJsonError> {
+        if let Some(metadata) = self.cache.read().await.get(&token_id).cloned() {
+            return Ok(Some(metadata));
+        } else if let Some(metadata) = self
+            .load_json::<NftMetadata, _>(format!("{}.json", token_id))
+            .await?
+        {
+            self.cache.write().await.insert(token_id, metadata.clone());
+            return Ok(Some(metadata));
+        }
+        Ok(None)
+    }
+
+    async fn load_contract_metadata(&self) -> Option<ContractMetadata> {
+        match *(self.contract_cache.read().await) {
+            Some(ref metadata) => Some(metadata.clone()),
+            None => match self.load_json::<ContractMetadata, _>("contract.json").await {
+                Ok(Some(metadata)) => {
+                    self.contract_cache.write().await.replace(metadata.clone());
+                    Some(metadata)
+                }
+                _ => None,
+            },
+        }
+    }
 }
 
 #[async_trait]
@@ -74,10 +107,10 @@ impl MetadataGenerator for LocalJson {
     type Error = LocalJsonError;
 
     async fn metadata_for(&self, token_id: U256) -> Result<Option<NftMetadata>, Self::Error> {
-        self.load_json(format!("{}.json", token_id)).await
+        self.load_metadata(token_id).await
     }
 
     async fn contract_metadata(&self) -> Option<ContractMetadata> {
-        self.load_json("contract.json").await.ok().flatten()
+        self.load_contract_metadata().await
     }
 }
