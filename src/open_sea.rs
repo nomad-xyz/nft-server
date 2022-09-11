@@ -126,6 +126,7 @@ pub struct ContractMetadata {
     pub name: String,
     /// The collection description
     pub description: String,
+    #[serde(flatten)]
     /// The collection image
     pub image: NftImage,
     /// An external link for the NFT collection
