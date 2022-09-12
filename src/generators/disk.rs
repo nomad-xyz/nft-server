@@ -13,9 +13,14 @@ use crate::{open_sea::ContractMetadata, MetadataGenerator, NftMetadata};
 ///
 /// ## Notes
 ///
-/// Files are stored at `contract.json` for contract-level metadata, and
+/// Files must be stored at `contract.json` for contract-level metadata, and
 /// `{token-id}.json` for tokens, where `token-id` is the string representation
 /// of the decimal token id. e.g. `0.json`, `384510.json`, etc
+///
+/// This generator caches files in memory the first time they're opened. If NFT
+/// metadata changes, the server will need to be re-booted to clear the cache.
+/// In addition, if you're serving an egregious number of NFTs (or have large
+/// image-data properties), you may run out of memory as the cache grows
 #[derive(Debug)]
 pub struct LocalJson {
     location: PathBuf,
