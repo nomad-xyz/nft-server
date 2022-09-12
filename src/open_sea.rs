@@ -29,7 +29,10 @@ pub enum OpenSeaDisplayType {
 #[serde(untagged)]
 pub enum OpenSeaAttributeValue {
     /// A `String` attribute value
-    String(String),
+    String {
+        /// The value
+        value: String,
+    },
     /// An `Integer` with display type and max value
     Integer {
         /// The value
@@ -59,7 +62,9 @@ where
     T: AsRef<str>,
 {
     fn from(t: T) -> Self {
-        OpenSeaAttributeValue::String(t.as_ref().to_string())
+        OpenSeaAttributeValue::String {
+            value: t.as_ref().to_string(),
+        }
     }
 }
 
@@ -126,8 +131,8 @@ pub struct ContractMetadata {
     pub name: String,
     /// The collection description
     pub description: String,
-    #[serde(flatten)]
     /// The collection image
+    #[serde(flatten)]
     pub image: NftImage,
     /// An external link for the NFT collection
     pub external_link: Url,
