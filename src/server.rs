@@ -16,10 +16,25 @@ use crate::MetadataGenerator;
 
 /// Simple handler that consults the metadata generator, and returns EITHER the
 /// token metadata, or a 404
-pub async fn nft_handler<T>(Path(token_id): Path<U256>, State(generator): State<Arc<T>>) -> Response
+pub async fn nft_handler<T>(
+    Path(token_id): Path<String>,
+    State(generator): State<Arc<T>>,
+) -> Response
 where
     T: MetadataGenerator,
 {
+    let e_500 = (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        "service temporarily unavailable",
+    );
+    let token_id = match U256::from_dec_str(&token_id) {
+        Ok(id) => id,
+        Err(e) => {
+            tracing::error!(token_id = ?token_id, error = %e, "error in token_id parsing");
+            return e_500.into_response();
+        }
+    };
+
     match generator.metadata_for(token_id).await {
         Ok(Some(metadata)) => (
             [("Cache-Control", "max-age=300, must-revalidate")],
@@ -34,11 +49,7 @@ where
             .into_response(),
         Err(e) => {
             tracing::error!(error = %e, "error in metadata lookup");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "service temporarily unavailable",
-            )
-                .into_response()
+            e_500.into_response()
         }
     }
 }
@@ -81,9 +92,14 @@ where
     T: MetadataGenerator + Send + Sync + 'static,
 {
     let app = Router::<_, Body>::with_state(Arc::new(t))
+        .route(
+            "/favicon.ico",
+            get(|| async move { (StatusCode::NOT_FOUND, "") }),
+        )
         .route("/:token_id", get(nft_handler))
         .route("/", get(contract_handler))
         .fallback(return_404);
+
     serve_router_with_span(app, socket, span)
 }
 
