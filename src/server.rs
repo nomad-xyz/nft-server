@@ -75,6 +75,11 @@ pub async fn return_404() -> impl IntoResponse {
     (StatusCode::NOT_FOUND, "unknown route")
 }
 
+/// Handler for healthcheck
+pub async fn return_200() -> impl IntoResponse {
+    StatusCode::OK
+}
+
 /// Serve an NFT generator at the specified socket address, running in a
 /// provided span.
 ///
@@ -92,6 +97,7 @@ where
     T: MetadataGenerator + Send + Sync + 'static,
 {
     let app = Router::<_, Body>::with_state(Arc::new(t))
+        .route("/healthcheck", get(return_200))
         .route(
             "/favicon.ico",
             get(|| async move { (StatusCode::NOT_FOUND, "") }),
