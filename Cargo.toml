@@ -1,7 +1,12 @@
 [package]
 name = "nft-server"
 version = "0.1.0"
+authors = [ "James Prestwich <james@nomad.xyz>"]
 edition = "2021"
+description = "A simple, minimal NFT metadata generation trait, and a batteries-included metadata server"
+repository = "https://github.com/nomad-xyz/nft-server"
+license = "MIT OR Apache-2.0"
+keywords = [ "Ethereum", "NFT" ]
 
 [dependencies]
 async-trait = "0.1.57"
@@ -14,7 +19,6 @@ tokio = {version = "1.21.0", features = ["macros", "fs"] }
 tower-http = "0.3.4"
 tracing = "0.1.36"
 url = { version = "2.3.0", features = ["serde"] }
-
 axum = { version = "0.6.0-rc.2", optional = true, features = ["macros"] }
 
 [features]
