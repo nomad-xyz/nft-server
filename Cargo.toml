@@ -1,6 +1,6 @@
 [package]
 name = "nft-server"
-version = "0.1.0"
+version = "0.1.1"
 authors = [ "James Prestwich <james@nomad.xyz>"]
 edition = "2021"
 description = "A simple, minimal NFT metadata generation trait, and a batteries-included metadata server"
