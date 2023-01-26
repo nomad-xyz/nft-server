@@ -134,7 +134,7 @@ mod tests {
         let num = "0x3e10".parse::<U256>().unwrap();
         dbg!(num);
         dbg!(num.to_string());
-        dbg!(format!("{}", num));
+        dbg!(format!("{num}"));
         dbg!(json!({"number": 5u64}));
     }
 }

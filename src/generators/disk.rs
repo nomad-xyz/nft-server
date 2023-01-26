@@ -84,7 +84,7 @@ impl LocalJson {
         if let Some(metadata) = self.cache.read().await.get(&token_id).cloned() {
             return Ok(Some(metadata));
         } else if let Some(metadata) = self
-            .load_json::<NftMetadata, _>(format!("{}.json", token_id))
+            .load_json::<NftMetadata, _>(format!("{token_id}.json"))
             .await?
         {
             self.cache.write().await.insert(token_id, metadata.clone());
